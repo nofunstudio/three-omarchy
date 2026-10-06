@@ -56,7 +56,7 @@ export default class Scene {
 	#fitLogoScale(width, height) {
 		const fit = Math.min(
 			(width * 0.8) / LOGO_WIDTH,
-			(height * 0.85) / (LOGO_HEIGHT + this.flameRoom),
+			(height * 0.78) / (LOGO_HEIGHT + this.flameRoom),
 		);
 		return Math.max(2, Math.min(this.maxLogoScale, Math.floor(fit)));
 	}

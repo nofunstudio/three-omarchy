@@ -1,0 +1,15 @@
+# NO FUN OS
+
+> No Fun OS is a local-first agentic development environment built on Warp, made by Jimmy Simmons of No Fun Studio. Claude is the controlling interface; coding agents, tools, and subscriptions become workers behind it. Text stays primary. Rich interfaces appear only when information deserves pixels.
+
+A terminal and Notion fucked. Then a magical side quest lets your agents render anything in your own design language.
+
+## Made by
+
+- [Jimmy Simmons — No Fun Studio](https://nofun.io): the studio behind No Fun OS
+
+## No Fun Studio sites
+
+- [sellmerch.ai](https://sellmerch.ai)
+- [Backstage AI](https://backstageai.com)
+- [mrch.shop](https://mrch.shop)
