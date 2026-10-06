@@ -13,7 +13,7 @@ export default class TextPhysics {
 		this.bounce = 0.4;
 		this.pushMin = 700;
 		this.pushGain = 1.6;
-		this.heatSteps = 38;
+		this.heatSteps = 28;
 		this.lift = 1400;
 		this.turbulence = 900;
 		this.lean = 0.005;

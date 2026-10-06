@@ -13,7 +13,7 @@ export default class Scene {
 		this.margin = 1;
 		this.maxLogoScale = 7;
 		this.logoScale = this.maxLogoScale;
-		this.flameRoom = 30; // logo texels of flame above the wordmark, used to centre the composition
+		this.flameRoom = 22; // logo texels of flame above the wordmark, used to centre the composition
 		this.windResponse = 8;
 		this.palette = {
 			bg: 0x0d0e12,

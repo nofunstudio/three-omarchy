@@ -15,7 +15,9 @@ uniform vec3 uLogoColor;
 uniform vec3 uOutlineColor;
 uniform vec3 uFlameRamp[4];
 
-const int HEAT_STEPS = 52;
+const float HEAT_STEPS = 38.0; // flame length at rest, in logo texels / 0.6
+const float FACE_STEPS = 14.0; // the smiley only smoulders
+const int MAX_STEPS = 64;      // loop bound once speed stretches the flames
 
 float hash(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -73,15 +75,25 @@ float flame(vec2 lc, float t) {
 	float lean = clamp(-uLogoVelocity.x * 0.005, -0.6, 0.6);
 	float stretch = clamp(1.0 - uLogoVelocity.y * 0.008, 0.55, 1.7);
 
+	// Flames sit at their resting height and only climb while the logo is moving fast.
+	float boost = clamp(length(uLogoVelocity) * 0.004, 0.0, 0.65);
+	float steps = HEAT_STEPS * (1.0 + boost);
+	float faceSteps = FACE_STEPS * (1.0 + boost * 2.0);
+
 	float sway = (fbm(vec2(lc.x * 0.09, t * 0.6)) - 0.5) * 1.4;
 	float heat = 0.0;
-	for (int k = 0; k < HEAT_STEPS; k++) {
+	float smoulder = 0.0;
+	for (int k = 0; k < MAX_STEPS; k++) {
 		float fk = float(k);
+		if (fk >= steps) break;
 		// Alternate samples left/right so tongues spread over the gaps between letters as they rise.
 		float spread = (mod(fk, 2.0) * 2.0 - 1.0) * fk * 0.07;
-		heat = max(heat, logo(lc - vec2(sway * fk * 0.3 + lean * fk + spread, fk * 0.6 * stretch)) * (1.0 - fk / float(HEAT_STEPS)));
+		vec2 m = logoMask(lc - vec2(sway * fk * 0.3 + lean * fk + spread, fk * 0.6 * stretch));
+		heat = max(heat, m.r * (1.0 - fk / steps));
+		if (fk < faceSteps) smoulder = max(smoulder, m.g * (1.0 - fk / faceSteps));
 	}
-	heat = pow(heat, 1.15);
+	heat = max(heat, smoulder * 0.85);
+	heat = pow(heat, 1.3);
 
 	float above = max(0.0, lc.y - uLogoSize.y);
 	vec2 ls = vec2(lc.x - lean * above * 1.6, lc.y);
