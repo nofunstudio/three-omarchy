@@ -12,9 +12,10 @@ uniform float uLogoScale;
 uniform vec2 uLogoVelocity;
 uniform vec3 uBg;
 uniform vec3 uLogoColor;
+uniform vec3 uOutlineColor;
 uniform vec3 uFlameRamp[4];
 
-const int HEAT_STEPS = 38;
+const int HEAT_STEPS = 52;
 
 float hash(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -53,9 +54,19 @@ bool glyph(int level, ivec2 fp) {
 	return ((row >> (7 - fp.x)) & 1) == 1;
 }
 
+// r = wordmark (burns), g = face (does not burn)
+vec2 logoMask(vec2 p) {
+	if (any(lessThan(p, vec2(0.0))) || any(greaterThanEqual(p, uLogoSize))) return vec2(0.0);
+	return texelFetch(uLogo, ivec2(p), 0).rg;
+}
+
 float logo(vec2 p) {
-	if (any(lessThan(p, vec2(0.0))) || any(greaterThanEqual(p, uLogoSize))) return 0.0;
-	return texelFetch(uLogo, ivec2(p), 0).r;
+	return logoMask(p).r;
+}
+
+float shape(vec2 p) {
+	vec2 m = logoMask(p);
+	return max(m.r, m.g);
 }
 
 float flame(vec2 lc, float t) {
@@ -66,15 +77,17 @@ float flame(vec2 lc, float t) {
 	float heat = 0.0;
 	for (int k = 0; k < HEAT_STEPS; k++) {
 		float fk = float(k);
-		heat = max(heat, logo(lc - vec2(sway * fk * 0.3 + lean * fk, fk * 0.6 * stretch)) * (1.0 - fk / float(HEAT_STEPS)));
+		// Alternate samples left/right so tongues spread over the gaps between letters as they rise.
+		float spread = (mod(fk, 2.0) * 2.0 - 1.0) * fk * 0.07;
+		heat = max(heat, logo(lc - vec2(sway * fk * 0.3 + lean * fk + spread, fk * 0.6 * stretch)) * (1.0 - fk / float(HEAT_STEPS)));
 	}
-	heat = pow(heat, 1.3);
+	heat = pow(heat, 1.15);
 
 	float above = max(0.0, lc.y - uLogoSize.y);
 	vec2 ls = vec2(lc.x - lean * above * 1.6, lc.y);
 	float curl = (fbm(vec2(ls.x * 0.025, ls.y * 0.04 - t * 0.25)) - 0.5) * 4.0 * (1.0 - heat);
 	float ridge = pow(1.0 - abs(2.0 * fbm(vec2(ls.x * 0.14 + curl, ls.y * 0.09 - t * 0.9)) - 1.0), 3.0);
-	float columns = 0.5 + 0.8 * fbm(vec2(lc.x * 0.05, t * 0.4));
+	float columns = 0.7 + 0.8 * fbm(vec2(lc.x * 0.05, t * 0.4));
 	return heat * columns * ridge * 2.8 + pow(heat, 8.0) * 1.0;
 }
 
@@ -123,17 +136,14 @@ void main() {
 
 	float near = 0.0;
 	for (int dy = -1; dy <= 1; dy++)
-		for (int dx = -1; dx <= 1; dx++)
-			near = max(near, logo(lp + vec2(dx, dy) * 1.25));
-	if (near > 0.5) col = uLogoColor;
+		for (int dx = -1; dx <= 1; dx++) {
+			vec2 o = vec2(dx, dy);
+			near = max(near, shape(lp + o));
+			near = max(near, shape(lp + o * 1.5));
+		}
+	if (near > 0.5) col = uOutlineColor;
 
-	near = 0.0;
-	for (int dy = -1; dy <= 1; dy++)
-		for (int dx = -1; dx <= 1; dx++)
-			near = max(near, logo(lp + vec2(dx, dy) * 1.0));
-	if (near > 0.5) col = uBg;
-
-	if (logo(lp) > 0.5) col = intensity > 2.0 && glyph(1, fp) ? uFlameRamp[1] : uLogoColor;
+	if (shape(lp) > 0.5) col = intensity > 2.0 && glyph(1, fp) ? uFlameRamp[1] : uLogoColor;
 
 	gl_FragColor = vec4(col, 1.0);
 

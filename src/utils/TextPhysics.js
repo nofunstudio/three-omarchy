@@ -1,5 +1,5 @@
 import TextScreen from "./TextScreen";
-import { LOGO_ROWS, LOGO_WIDTH, LOGO_HEIGHT } from "./OmarchyLogo";
+import { LOGO_ROWS, LOGO_WIDTH, LOGO_HEIGHT } from "./NoFunLogo";
 
 export default class TextPhysics {
 	constructor(screen, logoScale) {
@@ -13,7 +13,7 @@ export default class TextPhysics {
 		this.bounce = 0.4;
 		this.pushMin = 700;
 		this.pushGain = 1.6;
-		this.heatSteps = 28;
+		this.heatSteps = 38;
 		this.lift = 1400;
 		this.turbulence = 900;
 		this.lean = 0.005;
@@ -27,14 +27,19 @@ export default class TextPhysics {
 		return v - Math.floor(v);
 	}
 
+	#cell(cx, cy) {
+		if (cx < 0 || cy < 0 || cx >= LOGO_WIDTH || cy >= LOGO_HEIGHT) return ".";
+		return LOGO_ROWS[cy][cx];
+	}
+
+	// Any part of the composite (wordmark or face) is solid.
 	#lit(cx, cy) {
-		return (
-			cx >= 0 &&
-			cy >= 0 &&
-			cx < LOGO_WIDTH &&
-			cy < LOGO_HEIGHT &&
-			LOGO_ROWS[cy][cx] === "#"
-		);
+		return this.#cell(cx, cy) !== ".";
+	}
+
+	// Only the wordmark burns.
+	#burns(cx, cy) {
+		return this.#cell(cx, cy) === "#";
 	}
 
 	#solid(px, py, logoX, logoY) {
@@ -70,7 +75,7 @@ export default class TextPhysics {
 		for (let k = 0; k < this.heatSteps; k++) {
 			const cy = Math.floor(ly + k * 0.6 * stretch);
 			if (cy >= LOGO_HEIGHT) return 0;
-			if (this.#lit(Math.floor(lx - lean * k), cy))
+			if (this.#burns(Math.floor(lx - lean * k), cy))
 				return Math.pow(1 - k / this.heatSteps, 1.3);
 		}
 		return 0;

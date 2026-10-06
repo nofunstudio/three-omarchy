@@ -2,21 +2,24 @@ import * as THREE from "three";
 import WebGLContext from "../core/WebGLContext";
 import vertexShader from "../shaders/logo.vert";
 import fragmentShader from "../shaders/fire.frag";
-import { createLogoTexture, LOGO_WIDTH, LOGO_HEIGHT } from "../utils/OmarchyLogo";
+import { createLogoTexture, LOGO_WIDTH, LOGO_HEIGHT } from "../utils/NoFunLogo";
 import TextScreen from "../utils/TextScreen";
 import TextPhysics from "../utils/TextPhysics";
 import { aboutLines } from "../utils/AboutScreen";
 
 export default class Scene {
 	constructor() {
-		this.cols = 96;
+		this.cols = 80;
 		this.margin = 1;
-		this.logoScale = 8;
+		this.maxLogoScale = 7;
+		this.logoScale = this.maxLogoScale;
+		this.flameRoom = 30; // logo texels of flame above the wordmark, used to centre the composition
 		this.windResponse = 8;
 		this.palette = {
-			bg: 0x1a1b26,
-			logo: 0x9ece6a,
-			flames: [0xdb4b4c, 0xff9e64, 0xe0af68, 0xc0caf5],
+			bg: 0x0d0e12,
+			logo: 0xffffff,
+			outline: 0x000000,
+			flames: [0xc8321e, 0xff6a1a, 0xffb83d, 0xfff4dc],
 		};
 
 		this.context = new WebGLContext();
@@ -49,15 +52,29 @@ export default class Scene {
 		return { scale, width, height, originX, originY };
 	}
 
+	// Largest integer scale (up to maxLogoScale) at which wordmark + face + flames fit the screen.
+	#fitLogoScale(width, height) {
+		const fit = Math.min(
+			(width * 0.8) / LOGO_WIDTH,
+			(height * 0.85) / (LOGO_HEIGHT + this.flameRoom),
+		);
+		return Math.max(2, Math.min(this.maxLogoScale, Math.floor(fit)));
+	}
+
+	#centerLogo(width, height) {
+		const s = this.logoScale;
+		this.logo.x = Math.floor((width - LOGO_WIDTH * s) / 2);
+		this.logo.y = Math.floor((height - (LOGO_HEIGHT + this.flameRoom) * s) / 2 + this.flameRoom * s);
+	}
+
 	#addObjects() {
 		const { width, height, originX, originY } = this.layout;
 
 		this.screen = new TextScreen(width, height);
 		this.screen.setLines(this.lines, originX, originY);
+		this.logoScale = this.#fitLogoScale(width, height);
 		this.physics = new TextPhysics(this.screen, this.logoScale);
-
-		this.logo.x = Math.floor((width - LOGO_WIDTH * this.logoScale) / 2);
-		this.logo.y = Math.floor((height - LOGO_HEIGHT * this.logoScale) / 2);
+		this.#centerLogo(width, height);
 
 		this.material = new THREE.ShaderMaterial({
 			vertexShader,
@@ -75,6 +92,7 @@ export default class Scene {
 				uLogoVelocity: { value: new THREE.Vector2() },
 				uBg: { value: new THREE.Color(this.palette.bg) },
 				uLogoColor: { value: new THREE.Color(this.palette.logo) },
+				uOutlineColor: { value: new THREE.Color(this.palette.outline) },
 				uFlameRamp: { value: this.palette.flames.map((hex) => new THREE.Color(hex)) },
 			},
 			depthTest: false,
@@ -140,8 +158,16 @@ export default class Scene {
 		const dy = next.originY - this.layout.originY;
 		this.layout = next;
 		this.screen.resize(next.width, next.height, dx, dy);
-		this.logo.x += dx;
-		this.logo.y += dy;
+		const scale = this.#fitLogoScale(next.width, next.height);
+		if (scale !== this.logoScale) {
+			this.logoScale = scale;
+			this.physics.scale = scale;
+			this.material.uniforms.uLogoScale.value = scale;
+			this.#centerLogo(next.width, next.height);
+		} else {
+			this.logo.x += dx;
+			this.logo.y += dy;
+		}
 		this.logoPrev = null;
 		this.material.uniforms.uScreenSize.value.set(next.width, next.height);
 		this.material.uniforms.uFontPx.value = next.scale;
